@@ -4,6 +4,9 @@ import os
 import re
 import time
 from . import database
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_URL = "https://opinion.lawmaking.go.kr"
 
@@ -158,7 +161,10 @@ def download_pdf(post_url, download_dir, delay=1):
                     for chunk in pdf_response.iter_content(chunk_size=8192):
                         f.write(chunk)
                 print(f"Downloaded {file_name}")
-                database.update_post_download_status(post_url, file_path)
+                
+                # Remove the PDF_DOWNLOAD_DIR prefix before saving to DB
+                db_pdf_path = os.path.relpath(file_path, os.getenv("PDF_DOWNLOAD_DIR", "downloads"))
+                database.update_post_download_status(post_url, db_pdf_path)
         else:
             print(f"No PDF found for {post_url}")
             
