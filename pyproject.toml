@@ -27,4 +27,4 @@ dependencies = [
 "Bug Tracker" = "https://github.com/pypa/sampleproject/issues"
 
 [project.scripts]
-scrape-opinions = "opinion_scraper.cli:main"
+assmon = "opinion_scraper.cli:main"

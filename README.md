@@ -45,13 +45,13 @@ PDF_DOWNLOAD_DIR=downloads
 To scrape opinions from a specific page range:
 
 ```bash
-scrape-opinions scrape --start-page 1 --end-page 10
+assmon scrape --start-page 1 --end-page 10
 ```
 
 You can optionally specify an output directory (overrides `.env` setting):
 
 ```bash
-scrape-opinions scrape --start-page 1 --end-page 10 --output-dir my_pdfs
+assmon scrape --start-page 1 --end-page 10 --output-dir my_pdfs
 ```
 
 ### Fetching Latest Posts
@@ -59,7 +59,7 @@ scrape-opinions scrape --start-page 1 --end-page 10 --output-dir my_pdfs
 To fetch only the latest posts since your last scraping attempt (it will stop when it encounters a post with an ID that is already in the database):
 
 ```bash
-scrape-opinions scrape --fetch-latest
+assmon scrape --fetch-latest
 ```
 
 ### Checking Status
@@ -67,7 +67,7 @@ scrape-opinions scrape --fetch-latest
 To check the current status of the database:
 
 ```bash
-scrape-opinions status
+assmon status
 ```
 
 ### Other Options
@@ -79,11 +79,11 @@ scrape-opinions status
 Scrape pages 1 to 5 with a 2-second delay:
 
 ```bash
-scrape-opinions scrape --start-page 1 --end-page 5 --delay 2
+assmon scrape --start-page 1 --end-page 5 --delay 2
 ```
 
 Fetch latest posts and save to a custom directory:
 
 ```bash
-scrape-opinions scrape --fetch-latest --output-dir new_opinions
+assmon scrape --fetch-latest --output-dir new_opinions
 ```
