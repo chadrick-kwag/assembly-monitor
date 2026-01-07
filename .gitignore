@@ -1,6 +1,11 @@
-GEMINI.md
-.venv
-teststuff
-*.egg-info
-.gemini
+
+# Environment variables for opinion_scraper
+.env
 .vscode
+.venv
+.gemini
+teststuff
+downloads
+*.db
+GEMINI.md
+*.egg-info

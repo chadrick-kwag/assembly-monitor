@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import os
 import re
 import time
+from . import database
 
 BASE_URL = "https://opinion.lawmaking.go.kr"
 
@@ -57,7 +58,7 @@ def refresh_session():
     except requests.exceptions.RequestException as e:
         print(f"Error refreshing session: {e}")
 
-def get_post_urls(start_page, end_page, delay=1):
+def get_post_urls(start_page, end_page, delay=1, stop_at_url=None):
     """
     Get all post URLs from the given page range.
     """
@@ -69,7 +70,11 @@ def get_post_urls(start_page, end_page, delay=1):
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             for a in soup.select("td.subject a"):
-                post_urls.append(BASE_URL + a["href"])
+                post_url = BASE_URL + a["href"]
+                if post_url == stop_at_url:
+                    return post_urls
+                database.add_post(post_url)
+                post_urls.append(post_url)
             time.sleep(delay)
         except requests.exceptions.RequestException as e:
             print(f"Error fetching page {page_index}: {e}")
@@ -79,6 +84,11 @@ def download_pdf(post_url, download_dir, delay=1):
     """
     Download the PDF from a post URL.
     """
+    post = database.get_post_by_url(post_url)
+    if post and post['pdf_downloaded']:
+        print(f"PDF for {post_url} already downloaded.")
+        return
+
     try:
         response = requests.get(post_url)
         time.sleep(delay)
@@ -127,10 +137,19 @@ def download_pdf(post_url, download_dir, delay=1):
                         file_name = header_filename
                         file_path = os.path.join(download_dir, file_name)
 
+                # Handle filename collisions
+                if os.path.exists(file_path):
+                    name, ext = os.path.splitext(file_name)
+                    # Create a short hash from the URL to append to the filename
+                    url_hash = hex(hash(post_url))[-6:]
+                    file_name = f"{name}_{url_hash}{ext}"
+                    file_path = os.path.join(download_dir, file_name)
+
                 with open(file_path, "wb") as f:
                     for chunk in pdf_response.iter_content(chunk_size=8192):
                         f.write(chunk)
                 print(f"Downloaded {file_name}")
+                database.update_post_download_status(post_url, file_path)
         else:
             print(f"No PDF found for {post_url}")
             
