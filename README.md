@@ -40,18 +40,18 @@ PDF_DOWNLOAD_DIR=downloads
 
 ## Usage
 
-### Basic Scraping
+### Scraping
 
 To scrape opinions from a specific page range:
 
 ```bash
-scrape-opinions --start-page 1 --end-page 10
+scrape-opinions scrape --start-page 1 --end-page 10
 ```
 
 You can optionally specify an output directory (overrides `.env` setting):
 
 ```bash
-scrape-opinions --start-page 1 --end-page 10 --output-dir my_pdfs
+scrape-opinions scrape --start-page 1 --end-page 10 --output-dir my_pdfs
 ```
 
 ### Fetching Latest Posts
@@ -59,7 +59,15 @@ scrape-opinions --start-page 1 --end-page 10 --output-dir my_pdfs
 To fetch only the latest posts since your last scraping attempt (it will stop when it encounters an already processed URL):
 
 ```bash
-scrape-opinions --fetch-latest
+scrape-opinions scrape --fetch-latest
+```
+
+### Checking Status
+
+To check the current status of the database:
+
+```bash
+scrape-opinions status
 ```
 
 ### Other Options
@@ -71,11 +79,11 @@ scrape-opinions --fetch-latest
 Scrape pages 1 to 5 with a 2-second delay:
 
 ```bash
-scrape-opinions --start-page 1 --end-page 5 --delay 2
+scrape-opinions scrape --start-page 1 --end-page 5 --delay 2
 ```
 
 Fetch latest posts and save to a custom directory:
 
 ```bash
-scrape-opinions --fetch-latest --output-dir new_opinions
+scrape-opinions scrape --fetch-latest --output-dir new_opinions
 ```

@@ -6,15 +6,22 @@ from .database import initialize_db, get_stats, get_last_post_url
 
 load_dotenv()
 
-@click.command()
+@click.group()
+def main():
+    """
+    A web scraper for opinion.lawmaking.go.kr
+    """
+    pass
+
+@main.command()
 @click.option("--start-page", default=1, help="The page number to start scraping from.")
 @click.option("--end-page", default=1, help="The page number to stop scraping at.")
 @click.option("--output-dir", help="The directory to save the downloaded PDFs.")
 @click.option("--delay", default=1, help="Time delay in seconds between requests.")
 @click.option("--fetch-latest", is_flag=True, help="Fetch latest posts until the last known post.")
-def main(start_page, end_page, output_dir, delay, fetch_latest):
+def scrape(start_page, end_page, output_dir, delay, fetch_latest):
     """
-    A web scraper for opinion.lawmaking.go.kr
+    Scrape opinions and download PDFs.
     """
     initialize_db()
 
@@ -46,6 +53,18 @@ def main(start_page, end_page, output_dir, delay, fetch_latest):
 
     click.echo("Done.")
 
+@main.command()
+def status():
+    """
+    Show the current status of the database.
+    """
+    initialize_db()
+    stats = get_stats()
+    click.echo("\n--- Database Status ---")
+    click.echo(f"Total URLs in database: {stats['total_urls']}")
+    click.echo(f"PDFs downloaded: {stats['downloaded_pdfs']}")
+    click.echo(f"URLs without PDF: {stats['not_downloaded']}")
+    click.echo("-----------------------")
 
 if __name__ == "__main__":
     main()
