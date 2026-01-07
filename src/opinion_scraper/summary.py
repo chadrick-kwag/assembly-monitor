@@ -5,12 +5,8 @@ import pathlib
 from dotenv import load_dotenv
 
 # Conditional import for google.generativeai
-try:
-    from google import genai
-    from google.genai import types
-except ImportError:
-    print("google-generativeai library not found. Please install it: pip install google-generativeai", file=sys.stderr)
-    sys.exit(1)
+from google import genai
+from google.genai import types
 
 
 load_dotenv()
