@@ -3,3 +3,4 @@ GEMINI.md
 teststuff
 *.egg-info
 .gemini
+.vscode
