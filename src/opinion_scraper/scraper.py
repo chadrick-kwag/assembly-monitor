@@ -142,7 +142,7 @@ def process_post(post_url, download_dir, delay=1):
                 # Regex for legislation number: looks for "제" followed by digits, then "호"
                 leg_num_match = re.search(r"제(\d+)호", info_text)
                 if leg_num_match:
-                    legislation_number = leg_num_match.group(0) # Keep "제" and "호"
+                    legislation_number = leg_num_match.group(1) # Extract only the number
                 
                 # Regex for submission date: looks for (YYYY. MM. DD.)
                 date_match = re.search(r"\((\d{4}\. \d{1,2}\. \d{1,2}\.)\)", info_text)
