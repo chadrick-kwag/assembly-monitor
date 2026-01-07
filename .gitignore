@@ -9,3 +9,4 @@ downloads
 *.db
 GEMINI.md
 *.egg-info
+.DS_Store
