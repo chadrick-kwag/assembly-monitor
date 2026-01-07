@@ -12,3 +12,4 @@ GEMINI.md
 .DS_Store
 .*_cache
 backups
+__pycache__

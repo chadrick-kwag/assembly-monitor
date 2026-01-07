@@ -10,7 +10,7 @@ authors = [
 ]
 description = "A web scraper for opinion.lawmaking.go.kr"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -20,6 +20,11 @@ dependencies = [
     "requests",
     "beautifulsoup4",
     "click",
+    "python-dotenv>=0.21.1",
+    "tqdm>=4.67.1",
+    "httpx>=0.24.1",
+    "google-generativeai>=0.8.6",
+    "google-genai>=1.47.0",
 ]
 
 [project.urls]
