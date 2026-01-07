@@ -23,6 +23,40 @@ PDF_DOWNLOAD_HEADERS_TEMPLATE = {
     'sec-ch-ua-platform': '"macOS"'
 }
 
+def refresh_session():
+    """
+    Fetches a new JSESSIONID and updates the 'Cookie' in the header template.
+    This should be called if downloads are failing due to an expired session.
+    """
+    global PDF_DOWNLOAD_HEADERS_TEMPLATE
+    print("Attempting to refresh session cookie...")
+    try:
+        with requests.Session() as s:
+            # Use a User-Agent from the template to appear like a standard browser
+            headers = {'User-Agent': PDF_DOWNLOAD_HEADERS_TEMPLATE.get('User-Agent')}
+            res = s.get(f"{BASE_URL}/gcom/nsmLmSts/out", headers=headers)
+            res.raise_for_status()
+
+            new_jsessionid = s.cookies.get('JSESSIONID')
+
+            if new_jsessionid:
+                old_cookie_string = PDF_DOWNLOAD_HEADERS_TEMPLATE['Cookie']
+                
+                # Replace the old JSESSIONID value with the new one
+                new_cookie_string = re.sub(
+                    r'JSESSIONID=[^;]+', 
+                    f'JSESSIONID={new_jsessionid}', 
+                    old_cookie_string
+                )
+                
+                PDF_DOWNLOAD_HEADERS_TEMPLATE['Cookie'] = new_cookie_string
+                print("Successfully refreshed session cookie (JSESSIONID).")
+            else:
+                print("Warning: Could not find JSESSIONID in response.")
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error refreshing session: {e}")
+
 def get_post_urls(start_page, end_page, delay=1):
     """
     Get all post URLs from the given page range.
