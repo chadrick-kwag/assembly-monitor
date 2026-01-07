@@ -84,7 +84,9 @@ def summarize(legislation_number):
             if summary_text.startswith("Error:"):
                 click.echo(f"Failed to summarize: {summary_text}", err=True)
             else:
-                model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash") # Default model name
+                model_name = os.getenv("GEMINI_MODEL_NAME")
+                if not model_name:
+                    raise ValueError("GEMINI_MODEL_NAME environment variable not set.")
                 update_post_summary(post['url'], summary_text, model_name)
                 click.echo("Summary generated and saved to database.")
                 click.echo("\n--- Summary ---")
@@ -106,7 +108,9 @@ def summarize(legislation_number):
                 if summary_text.startswith("Error:"):
                     click.echo(f"Failed to summarize {full_pdf_path}: {summary_text}", err=True)
                 else:
-                    model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash") # Default model name
+                    model_name = os.getenv("GEMINI_MODEL_NAME")
+                    if not model_name:
+                        raise ValueError("GEMINI_MODEL_NAME environment variable not set.")
                     update_post_summary(post['url'], summary_text, model_name)
             else:
                 click.echo(f"Skipping post {post['url']} as no PDF path is available.", err=True)
