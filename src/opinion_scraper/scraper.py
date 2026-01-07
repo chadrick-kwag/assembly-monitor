@@ -113,6 +113,103 @@ def _get_id_from_url(url):
     return 0
 
 
+def _extract_legislation_info(soup):
+    """
+    Extracts legislation number and submission date from the parsed HTML.
+    Returns a tuple (legislation_number, submission_date).
+    """
+    legislation_number = None
+    submission_date = None
+
+    발의정보_th = soup.find("th", scope="row", string="발의정보 ")
+    if 발의정보_th:
+        발의정보_td = 발의정보_th.find_next_sibling("td")
+        if 발의정보_td:
+            info_text = 발의정보_td.get_text(strip=True)
+            
+            leg_num_match = re.search(r"제(\d+)호", info_text)
+            if leg_num_match:
+                legislation_number = leg_num_match.group(1)
+            
+            date_match = re.search(r"\((\d{4}\. \d{1,2}\. \d{1,2}\.)\)", info_text)
+            if date_match:
+                submission_date = date_match.group(1).strip()
+    return legislation_number, submission_date
+
+def _get_pdf_download_url_and_filename(soup):
+    """
+    Extracts the PDF download URL and the initial filename from the parsed HTML.
+    Returns a tuple (pdf_url, file_name) or (None, None) if not found.
+    """
+    pdf_link_button = None
+    for button in soup.find_all("button", onclick=re.compile(r"fnDownload\(\d+\)")):
+        if ".pdf" in button.text.lower():
+            pdf_link_button = button
+            break
+
+    if pdf_link_button:
+        match = re.search(r"fnDownload\((\d+)\)", pdf_link_button["onclick"])
+        if match:
+            seq = match.group(1)
+            pdf_url = f"{BASE_URL}/better/atchFile/download/{seq}"
+            file_name = pdf_link_button.find(string=True, recursive=False).strip()
+            return pdf_url, file_name
+    return None, None
+
+
+def _download_pdf_file(pdf_url, download_dir, initial_file_name, post_url, delay):
+    """
+    Downloads the PDF file from the given URL and saves it to the specified directory.
+    Handles filename extraction from headers and collision resolution.
+    Returns the path where the PDF was saved relative to PDF_DOWNLOAD_DIR, or None if download failed.
+    """
+    if not os.path.exists(download_dir):
+        os.makedirs(download_dir)
+
+    file_name = initial_file_name
+    file_path = os.path.join(download_dir, file_name)
+
+    # Prepare headers for PDF download, including the dynamic Referer
+    pdf_headers = PDF_DOWNLOAD_HEADERS_TEMPLATE.copy()
+    pdf_headers['Referer'] = post_url
+
+    pdf_response = requests.get(pdf_url, headers=pdf_headers, stream=True)
+    time.sleep(delay)
+    pdf_response.raise_for_status()
+
+    # Try to extract filename from Content-Disposition header, but also use the button text as a fallback
+    if "Content-Disposition" in pdf_response.headers:
+        cd = pdf_response.headers["Content-Disposition"]
+        fname = re.findall(r"filename\*?=([^;]+)", cd)
+        if fname:
+            try:
+                header_filename = requests.utils.unquote(fname[0]).encode('latin-1').decode('utf-8')
+            except:
+                header_filename = requests.utils.unquote(fname[0])
+            header_filename = header_filename.strip("'\"")
+            if not header_filename.lower().endswith(".pdf"):
+                header_filename += ".pdf"
+            file_name = header_filename
+            file_path = os.path.join(download_dir, file_name)
+
+    # Handle filename collisions
+    if os.path.exists(file_path):
+        name, ext = os.path.splitext(file_name)
+        # Create a short hash from the URL to append to the filename
+        url_hash = hex(hash(post_url))[-6:]
+        file_name = f"{name}_{url_hash}{ext}"
+        file_path = os.path.join(download_dir, file_name)
+
+    with open(file_path, "wb") as f:
+        for chunk in pdf_response.iter_content(chunk_size=8192):
+            f.write(chunk)
+    print(f"Downloaded {file_name}")
+    
+    # Remove the PDF_DOWNLOAD_DIR prefix before saving to DB
+    db_pdf_path = os.path.relpath(file_path, os.getenv("PDF_DOWNLOAD_DIR", "downloads"))
+    return db_pdf_path
+
+
 def process_post(post_url, download_dir, delay=1):
     """
     Download the PDF from a post URL.
@@ -129,25 +226,7 @@ def process_post(post_url, download_dir, delay=1):
         soup = BeautifulSoup(response.content, "html.parser")
         
         # Extract legislation number and submission date
-        legislation_number = None
-        submission_date = None
-        
-        # Find the '발의정보' row
-        발의정보_th = soup.find("th", scope="row", string="발의정보 ")
-        if 발의정보_th:
-            발의정보_td = 발의정보_th.find_next_sibling("td")
-            if 발의정보_td:
-                info_text = 발의정보_td.get_text(strip=True)
-                
-                # Regex for legislation number: looks for "제" followed by digits, then "호"
-                leg_num_match = re.search(r"제(\d+)호", info_text)
-                if leg_num_match:
-                    legislation_number = leg_num_match.group(1) # Extract only the number
-                
-                # Regex for submission date: looks for (YYYY. MM. DD.)
-                date_match = re.search(r"\((\d{4}\. \d{1,2}\. \d{1,2}\.)\)", info_text)
-                if date_match:
-                    submission_date = date_match.group(1).strip()
+        legislation_number, submission_date = _extract_legislation_info(soup)
         
         if legislation_number and submission_date:
             print(f"Extracted: Legislation Number - {legislation_number}, Submission Date - {submission_date}")
@@ -155,66 +234,16 @@ def process_post(post_url, download_dir, delay=1):
         else:
             print(f"Could not extract legislation info for {post_url}")
         
-        pdf_link_button = None
-        for button in soup.find_all("button", onclick=re.compile(r"fnDownload\(\d+\)")):
-            if ".pdf" in button.text.lower():
-                pdf_link_button = button
-                break
+        pdf_url, file_name = _get_pdf_download_url_and_filename(soup)
 
-        if pdf_link_button:
-            match = re.search(r"fnDownload\((\d+)\)", pdf_link_button["onclick"])
-            if match:
-                seq = match.group(1)
-                pdf_url = f"{BASE_URL}/better/atchFile/download/{seq}"
-                print(f'pdf url: {pdf_url}')
-                file_name = pdf_link_button.find(string=True, recursive=False).strip()
-
-                if not os.path.exists(download_dir):
-                    os.makedirs(download_dir)
-
-                file_path = os.path.join(download_dir, file_name)
-
-                # Prepare headers for PDF download, including the dynamic Referer
-                pdf_headers = PDF_DOWNLOAD_HEADERS_TEMPLATE.copy()
-                pdf_headers['Referer'] = post_url
-
-                pdf_response = requests.get(pdf_url, headers=pdf_headers, stream=True)
-                time.sleep(delay)
-                pdf_response.raise_for_status()
-
-                # Try to extract filename from Content-Disposition header, but also use the button text as a fallback
-                if "Content-Disposition" in pdf_response.headers:
-                    cd = pdf_response.headers["Content-Disposition"]
-                    fname = re.findall(r"filename\*?=([^;]+)", cd)
-                    if fname:
-                        try:
-                            header_filename = requests.utils.unquote(fname[0]).encode('latin-1').decode('utf-8')
-                        except:
-                            header_filename = requests.utils.unquote(fname[0])
-                        header_filename = header_filename.strip("'\"")
-                        if not header_filename.lower().endswith(".pdf"):
-                            header_filename += ".pdf"
-                        file_name = header_filename
-                        file_path = os.path.join(download_dir, file_name)
-
-                # Handle filename collisions
-                if os.path.exists(file_path):
-                    name, ext = os.path.splitext(file_name)
-                    # Create a short hash from the URL to append to the filename
-                    url_hash = hex(hash(post_url))[-6:]
-                    file_name = f"{name}_{url_hash}{ext}"
-                    file_path = os.path.join(download_dir, file_name)
-
-                with open(file_path, "wb") as f:
-                    for chunk in pdf_response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                print(f"Downloaded {file_name}")
-                
-                # Remove the PDF_DOWNLOAD_DIR prefix before saving to DB
-                db_pdf_path = os.path.relpath(file_path, os.getenv("PDF_DOWNLOAD_DIR", "downloads"))
+        if pdf_url and file_name:
+            print(f'pdf url: {pdf_url}')
+            db_pdf_path = _download_pdf_file(pdf_url, download_dir, file_name, post_url, delay)
+            if db_pdf_path:
                 database.update_post_download_status(post_url, db_pdf_path)
         else:
             print(f"No PDF found for {post_url}")
             
     except requests.exceptions.RequestException as e:
         print(f"Error downloading PDF from {post_url}: {e}")
+
