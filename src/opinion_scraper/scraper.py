@@ -17,7 +17,7 @@ def get_post_urls(start_page, end_page, delay=1):
             response = requests.get(url)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
-            for a in soup.select(".tbl_list tbody tr td.tal a"):
+            for a in soup.select("td.subject a"):
                 post_urls.append(BASE_URL + a["href"])
             time.sleep(delay)
         except requests.exceptions.RequestException as e:
@@ -34,39 +34,47 @@ def download_pdf(post_url, download_dir, delay=1):
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser")
         
-        # Find the link to the PDF
-        pdf_link = None
-        for a in soup.find_all("a", href=True):
-            if "lmFileDownload.do" in a["href"]:
-                pdf_link = a
+        pdf_link_button = None
+        for button in soup.find_all("button", onclick=re.compile(r"fnDownload\(\d+\)")):
+            if ".pdf" in button.text.lower():
+                pdf_link_button = button
                 break
 
-        if pdf_link:
-            pdf_url = BASE_URL + pdf_link["href"]
-            file_name_match = re.search(r"fileNm=([^&]+)", pdf_link["onclick"])
-            if file_name_match:
-                file_name = file_name_match.group(1)
-            else:
-                # Fallback to extract from URL if not in onclick
-                file_name_match = re.search(r"File_NAME=([^&]+)", pdf_url)
-                if file_name_match:
-                    file_name = file_name_match.group(1)
-                else:
-                    file_name = pdf_url.split("=")[-1] + ".pdf" # A default name
-            
-            file_path = os.path.join(download_dir, file_name)
+        if pdf_link_button:
+            match = re.search(r"fnDownload\((\d+)\)", pdf_link_button["onclick"])
+            if match:
+                seq = match.group(1)
+                pdf_url = f"{BASE_URL}/better/atchFile/download/{seq}"
+                file_name = pdf_link_button.find(text=True, recursive=False).strip()
 
-            if not os.path.exists(download_dir):
-                os.makedirs(download_dir)
+                if not os.path.exists(download_dir):
+                    os.makedirs(download_dir)
 
-            pdf_response = requests.get(pdf_url, stream=True)
-            time.sleep(delay)
-            pdf_response.raise_for_status()
+                file_path = os.path.join(download_dir, file_name)
 
-            with open(file_path, "wb") as f:
-                for chunk in pdf_response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            print(f"Downloaded {file_name}")
+                pdf_response = requests.get(pdf_url, stream=True)
+                time.sleep(delay)
+                pdf_response.raise_for_status()
+
+                # Try to extract filename from Content-Disposition header, but also use the button text as a fallback
+                if "Content-Disposition" in pdf_response.headers:
+                    cd = pdf_response.headers["Content-Disposition"]
+                    fname = re.findall(r"filename\*?=([^;]+)", cd)
+                    if fname:
+                        try:
+                            header_filename = requests.utils.unquote(fname[0]).encode('latin-1').decode('utf-8')
+                        except:
+                            header_filename = requests.utils.unquote(fname[0])
+                        header_filename = header_filename.strip("'\"")
+                        if not header_filename.lower().endswith(".pdf"):
+                            header_filename += ".pdf"
+                        file_name = header_filename
+                        file_path = os.path.join(download_dir, file_name)
+
+                with open(file_path, "wb") as f:
+                    for chunk in pdf_response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                print(f"Downloaded {file_name}")
         else:
             print(f"No PDF found for {post_url}")
             
