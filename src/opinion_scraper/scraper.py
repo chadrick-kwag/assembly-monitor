@@ -58,7 +58,7 @@ def refresh_session():
     except requests.exceptions.RequestException as e:
         print(f"Error refreshing session: {e}")
 
-def get_post_urls(start_page, end_page, delay=1, stop_at_url=None):
+def get_post_urls(start_page, end_page, delay=1, highest_id_num=0):
     """
     Get all post URLs from the given page range.
     """
@@ -71,7 +71,8 @@ def get_post_urls(start_page, end_page, delay=1, stop_at_url=None):
             soup = BeautifulSoup(response.content, "html.parser")
             for a in soup.select("td.subject a"):
                 post_url = BASE_URL + a["href"]
-                if post_url == stop_at_url:
+                id_num = _get_id_from_url(post_url)
+                if highest_id_num > 0 and id_num <= highest_id_num:
                     return post_urls
                 database.add_post(post_url)
                 post_urls.append(post_url)
@@ -79,6 +80,14 @@ def get_post_urls(start_page, end_page, delay=1, stop_at_url=None):
         except requests.exceptions.RequestException as e:
             print(f"Error fetching page {page_index}: {e}")
     return post_urls
+
+def _get_id_from_url(url):
+    """Extracts the ID from a URL."""
+    match = re.search(r"/(\d+)/detailRP", url)
+    if match:
+        return int(match.group(1))
+    return 0
+
 
 def download_pdf(post_url, download_dir, delay=1):
     """

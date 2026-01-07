@@ -2,6 +2,7 @@ import sqlite3
 import os
 from dotenv import load_dotenv
 from datetime import datetime
+import re
 
 load_dotenv()
 
@@ -103,6 +104,34 @@ def get_last_post_url():
     conn.close()
     
     return post['url'] if post else None
+
+def _get_id_from_url(url):
+    """Extracts the ID from a URL."""
+    match = re.search(r"/(\d+)/detailRP", url)
+    if match:
+        return int(match.group(1))
+    return 0
+
+def get_highest_id_num():
+    """Retrieves the highest ID number from the URLs in the database."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT url FROM posts")
+    urls = cursor.fetchall()
+    
+    conn.close()
+    
+    if not urls:
+        return 0
+    
+    highest_id = 0
+    for url in urls:
+        id_num = _get_id_from_url(url['url'])
+        if id_num > highest_id:
+            highest_id = id_num
+            
+    return highest_id
 
 
 if __name__ == '__main__':

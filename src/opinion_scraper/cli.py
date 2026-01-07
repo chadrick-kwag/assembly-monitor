@@ -2,7 +2,7 @@ import click
 import os
 from dotenv import load_dotenv
 from .scraper import get_post_urls, download_pdf
-from .database import initialize_db, get_stats, get_last_post_url
+from .database import initialize_db, get_stats, get_highest_id_num
 
 load_dotenv()
 
@@ -33,11 +33,12 @@ def scrape(start_page, end_page, output_dir, delay, fetch_latest):
 
     if fetch_latest:
         click.echo("Fetching latest posts...")
-        last_url = get_last_post_url()
-        post_urls = get_post_urls(1, 100, delay, stop_at_url=last_url) # Scrape a large number of pages
+        highest_id = get_highest_id_num()
+        post_urls = get_post_urls(1, 100, delay, highest_id_num=highest_id) # Scrape a large number of pages
     else:
         click.echo(f"Scraping from page {start_page} to {end_page}")
         post_urls = get_post_urls(start_page, end_page, delay)
+
 
     click.echo(f"Found {len(post_urls)} new posts.")
 

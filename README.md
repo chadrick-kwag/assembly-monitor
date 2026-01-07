@@ -10,7 +10,7 @@ A web scraper for opinion.lawmaking.go.kr
 *   **PDF Download**: For each identified post URL, it navigates to the post page, locates the PDF download link, extracts the filename, and downloads the PDF to the designated output directory.
 *   **Database Integration**: Tracks all post URLs and whether the associated PDF was downloaded using SQLite.
 *   **Environment Variables**: Uses `python-dotenv` to manage the SQLite database path and PDF download directory.
-*   **Fetch Latest Posts**: A feature to fetch only the latest posts up to the last post URL gathered in a previous attempt.
+*   **Fetch Latest Posts**: A feature to fetch only the latest posts by finding the highest post ID in the database and fetching all posts with a higher ID.
 *   **Comprehensive Reporting**: Provides a summary of processed URLs, downloaded PDFs, and URLs without downloaded PDFs.
 *   **Duplicate Filename Handling**: Ensures that PDF filenames are unique to prevent overwriting.
 
@@ -56,7 +56,7 @@ scrape-opinions scrape --start-page 1 --end-page 10 --output-dir my_pdfs
 
 ### Fetching Latest Posts
 
-To fetch only the latest posts since your last scraping attempt (it will stop when it encounters an already processed URL):
+To fetch only the latest posts since your last scraping attempt (it will stop when it encounters a post with an ID that is already in the database):
 
 ```bash
 scrape-opinions scrape --fetch-latest
