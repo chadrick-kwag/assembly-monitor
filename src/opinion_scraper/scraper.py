@@ -133,7 +133,7 @@ def process_post(post_url, download_dir, delay=1):
         submission_date = None
         
         # Find the '발의정보' row
-        발의정보_th = soup.find("th", scope="row", text="발의정보 ")
+        발의정보_th = soup.find("th", scope="row", string="발의정보 ")
         if 발의정보_th:
             발의정보_td = 발의정보_th.find_next_sibling("td")
             if 발의정보_td:
@@ -167,7 +167,7 @@ def process_post(post_url, download_dir, delay=1):
                 seq = match.group(1)
                 pdf_url = f"{BASE_URL}/better/atchFile/download/{seq}"
                 print(f'pdf url: {pdf_url}')
-                file_name = pdf_link_button.find(text=True, recursive=False).strip()
+                file_name = pdf_link_button.find(string=True, recursive=False).strip()
 
                 if not os.path.exists(download_dir):
                     os.makedirs(download_dir)
