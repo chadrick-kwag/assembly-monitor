@@ -48,6 +48,12 @@ To scrape opinions from a specific page range:
 assmon scrape --start-page 1 --end-page 10
 ```
 
+The `--end-page` option can also be set to `end` to automatically determine the last available page to scrape:
+
+```bash
+assmon scrape --start-page 1 --end-page end
+```
+
 You can optionally specify an output directory (overrides `.env` setting):
 
 ```bash
