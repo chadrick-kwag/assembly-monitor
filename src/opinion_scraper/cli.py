@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from .scraper import get_post_urls, process_post, _get_last_page_number
 from .database import initialize_db, get_stats, get_highest_id_num, get_posts_to_summarize, update_post_summary, get_post_by_legislation_number
-from .summary import summarize_pdf_local, configure_genai
+from .summary import summarize_pdf_local
 from tqdm import tqdm
 
 load_dotenv()
@@ -69,19 +69,15 @@ def summarize(legislation_number):
     """
     initialize_db()
 
-    try:
-        configure_genai()
-    except ValueError as e:
-        click.echo(f"Error: {e}", err=True)
-        click.echo("Please set the GEMINI_API_KEY environment variable.", err=True)
-        return
+    pdf_download_dir = os.getenv("PDF_DOWNLOAD_DIR", "downloads")
 
     if legislation_number:
         click.echo(f"Attempting to summarize post with legislation number: {legislation_number}")
         post = get_post_by_legislation_number(legislation_number)
         if post and post['pdf_downloaded'] and post['pdf_path']:
-            click.echo(f"Summarizing {post['pdf_path']}...")
-            summary_text = summarize_pdf_local(post['pdf_path'])
+            full_pdf_path = os.path.join(pdf_download_dir, post['pdf_path'])
+            click.echo(f"Summarizing {full_pdf_path}...")
+            summary_text = summarize_pdf_local(full_pdf_path)
             if summary_text.startswith("Error:"):
                 click.echo(f"Failed to summarize: {summary_text}", err=True)
             else:
@@ -102,9 +98,10 @@ def summarize(legislation_number):
 
         for post in tqdm(posts_to_summarize, desc="Summarizing PDFs"):
             if post['pdf_path']:
-                summary_text = summarize_pdf_local(post['pdf_path'])
+                full_pdf_path = os.path.join(pdf_download_dir, post['pdf_path'])
+                summary_text = summarize_pdf_local(full_pdf_path)
                 if summary_text.startswith("Error:"):
-                    click.echo(f"Failed to summarize {post['pdf_path']}: {summary_text}", err=True)
+                    click.echo(f"Failed to summarize {full_pdf_path}: {summary_text}", err=True)
                 else:
                     model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash") # Default model name
                     update_post_summary(post['url'], summary_text, model_name)
