@@ -6,6 +6,23 @@ import time
 
 BASE_URL = "https://opinion.lawmaking.go.kr"
 
+# Headers for the PDF download request. Referer will be added dynamically.
+PDF_DOWNLOAD_HEADERS_TEMPLATE = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Language': 'ko,en;q=0.9,ko-KR;q=0.8,zh-CN;q=0.7,zh;q=0.6,en-US;q=0.5',
+    'Connection': 'keep-alive',
+    'Cookie': 'JSESSIONID=FSDbz6IfDaHC7cHzgqUVpS5-dp9TwRt_-q0hKYnL.node11; elevisor_for_j2ee_uid=4ba7ja6nz3n7p; PCID=17677554566492829293193; fileDownload=true; CMM_COOKIE_KEY=%7B%22srchTggPresetVal%22%3A%7B%22gcomnsmLmStsout%22%3Afalse%2C%22gcomnsmLmStsout2215774detailRP%22%3Afalse%2C%22gcomnsmLmStsout2215770detailRP%22%3Afalse%2C%22gcomnsmLmStsout2215860detailRP%22%3Afalse%2C%22gcomnsmLmStsout2215890detailRP%22%3Afalse%2C%22gcomnsmLmStsout2215890%22%3Afalse%2C%22gcomnsmLmStsout2215850detailRP%22%3Afalse%2C%22gcomnsmLmStsout2215862detailRP%22%3Afalse%2C%22gcomnsmLmStsout2215791detailRP%22%3Afalse%7D%7D; clientid=070045953828',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+    'sec-ch-ua': '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"macOS"'
+}
+
 def get_post_urls(start_page, end_page, delay=1):
     """
     Get all post URLs from the given page range.
@@ -45,6 +62,7 @@ def download_pdf(post_url, download_dir, delay=1):
             if match:
                 seq = match.group(1)
                 pdf_url = f"{BASE_URL}/better/atchFile/download/{seq}"
+                print(f'pdf url: {pdf_url}')
                 file_name = pdf_link_button.find(text=True, recursive=False).strip()
 
                 if not os.path.exists(download_dir):
@@ -52,7 +70,11 @@ def download_pdf(post_url, download_dir, delay=1):
 
                 file_path = os.path.join(download_dir, file_name)
 
-                pdf_response = requests.get(pdf_url, stream=True)
+                # Prepare headers for PDF download, including the dynamic Referer
+                pdf_headers = PDF_DOWNLOAD_HEADERS_TEMPLATE.copy()
+                pdf_headers['Referer'] = post_url
+
+                pdf_response = requests.get(pdf_url, headers=pdf_headers, stream=True)
                 time.sleep(delay)
                 pdf_response.raise_for_status()
 
