@@ -61,27 +61,6 @@ def refresh_session():
     except requests.exceptions.RequestException as e:
         print(f"Error refreshing session: {e}")
 
-def _get_last_page_number():
-    """
-    Fetches the first page and extracts the last page number from the pagination.
-    """
-    url = f"{BASE_URL}/gcom/nsmLmSts/out?pageIndex=1&blockStartPage=1"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, "html.parser")
-        last_page_link = soup.find("a", class_="move icoCnt_last")
-        if last_page_link and 'href' in last_page_link.attrs:
-            href = last_page_link['href']
-            match = re.search(r"pageIndex=(\d+)", href)
-            if match:
-                return int(match.group(1))
-        print("Warning: Could not determine last page number. Defaulting to 1.")
-        return 1
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching first page to determine last page number: {e}")
-        return 1
-
 def get_post_urls(start_page, end_page, delay=1, highest_id_num=0):
     """
     Get all post URLs from the given page range.

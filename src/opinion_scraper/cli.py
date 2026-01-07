@@ -1,7 +1,7 @@
 import click
 import os
 from dotenv import load_dotenv
-from .scraper import get_post_urls, process_post, _get_last_page_number
+from .scraper import get_post_urls, process_post
 from .database import initialize_db, get_stats, get_highest_id_num
 
 load_dotenv()
@@ -34,12 +34,8 @@ def scrape(start_page, end_page, output_dir, delay, fetch_latest):
     if fetch_latest:
         click.echo("Fetching latest posts...")
         highest_id = get_highest_id_num()
-        # Scrape a large number of pages, will stop when highest_id_num is reached
-        post_urls = get_post_urls(1, 100, delay, highest_id_num=highest_id) 
+        post_urls = get_post_urls(1, 100, delay, highest_id_num=highest_id) # Scrape a large number of pages
     else:
-        if end_page == 'end':
-            end_page = _get_last_page_number()
-            click.echo(f"Determined last page to be {end_page}")
         click.echo(f"Scraping from page {start_page} to {end_page}")
         post_urls = get_post_urls(start_page, end_page, delay)
 
