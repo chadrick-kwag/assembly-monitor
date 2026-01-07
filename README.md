@@ -28,6 +28,12 @@ A web scraper for opinion.lawmaking.go.kr
 
 ## Configuration
 
+To configure environment variables, copy the `.env.sample` file to `.env` and modify the values as needed.
+
+```bash
+cp .env.sample .env
+```
+
 Create a `.env` file in the root directory of the project to configure the database and download paths:
 
 ```
