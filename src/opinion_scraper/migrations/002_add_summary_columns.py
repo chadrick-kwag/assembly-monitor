@@ -19,7 +19,6 @@ def upgrade(db_path):
 def downgrade(db_path):
     import sqlite3
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
     
     # SQLite does not support dropping columns directly in older versions
     # For a proper downgrade in SQLite, you would typically need to
