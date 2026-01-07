@@ -1,7 +1,7 @@
 import click
 import os
 from dotenv import load_dotenv
-from .scraper import get_post_urls, download_pdf
+from .scraper import get_post_urls, process_post
 from .database import initialize_db, get_stats, get_highest_id_num
 
 load_dotenv()
@@ -43,7 +43,7 @@ def scrape(start_page, end_page, output_dir, delay, fetch_latest):
     click.echo(f"Found {len(post_urls)} new posts.")
 
     for url in post_urls:
-        download_pdf(url, output_dir, delay)
+        process_post(url, output_dir, delay)
 
     stats = get_stats()
     click.echo("\n--- Scraping Report ---")

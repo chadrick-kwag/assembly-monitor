@@ -92,7 +92,7 @@ def _get_id_from_url(url):
     return 0
 
 
-def download_pdf(post_url, download_dir, delay=1):
+def process_post(post_url, download_dir, delay=1):
     """
     Download the PDF from a post URL.
     """
@@ -106,6 +106,33 @@ def download_pdf(post_url, download_dir, delay=1):
         time.sleep(delay)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser")
+        
+        # Extract legislation number and submission date
+        legislation_number = None
+        submission_date = None
+        
+        # Find the '발의정보' row
+        발의정보_th = soup.find("th", scope="row", text="발의정보 ")
+        if 발의정보_th:
+            발의정보_td = 발의정보_th.find_next_sibling("td")
+            if 발의정보_td:
+                info_text = 발의정보_td.get_text(strip=True)
+                
+                # Regex for legislation number: looks for "제" followed by digits, then "호"
+                leg_num_match = re.search(r"제(\d+)호", info_text)
+                if leg_num_match:
+                    legislation_number = leg_num_match.group(0) # Keep "제" and "호"
+                
+                # Regex for submission date: looks for (YYYY. MM. DD.)
+                date_match = re.search(r"\((\d{4}\. \d{1,2}\. \d{1,2}\.)\)", info_text)
+                if date_match:
+                    submission_date = date_match.group(1).strip()
+        
+        if legislation_number and submission_date:
+            print(f"Extracted: Legislation Number - {legislation_number}, Submission Date - {submission_date}")
+            database.update_post_legislation_info(post_url, legislation_number, submission_date)
+        else:
+            print(f"Could not extract legislation info for {post_url}")
         
         pdf_link_button = None
         for button in soup.find_all("button", onclick=re.compile(r"fnDownload\(\d+\)")):
