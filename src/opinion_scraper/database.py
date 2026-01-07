@@ -60,7 +60,11 @@ def initialize_db():
             pdf_downloaded BOOLEAN NOT NULL DEFAULT 0,
             last_checked TIMESTAMP,
             last_downloaded TIMESTAMP,
-            pdf_path TEXT
+            pdf_path TEXT,
+            legislation_number TEXT,
+            submission_date TEXT,
+            summary TEXT,
+            summary_model TEXT
         );
     """)
     conn.commit()
@@ -76,16 +80,18 @@ def get_stats():
     
     total_urls = cursor.execute("SELECT COUNT(*) FROM posts").fetchone()[0]
     downloaded_pdfs = cursor.execute("SELECT COUNT(*) FROM posts WHERE pdf_downloaded = 1").fetchone()[0]
+    summarized_posts = cursor.execute("SELECT COUNT(*) FROM posts WHERE summary IS NOT NULL").fetchone()[0]
     
     conn.close()
     
     return {
         "total_urls": total_urls,
         "downloaded_pdfs": downloaded_pdfs,
-        "not_downloaded": total_urls - downloaded_pdfs
+        "not_downloaded": total_urls - downloaded_pdfs,
+        "summarized_posts": summarized_posts
     }
     
-def add_post(url, pdf_downloaded=False, pdf_path=None):
+def add_post(url, pdf_downloaded=False, pdf_path=None, legislation_number=None, submission_date=None):
     """Adds a new post to the database."""
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -95,13 +101,17 @@ def add_post(url, pdf_downloaded=False, pdf_path=None):
     
     try:
         cursor.execute(
-            "INSERT INTO posts (url, pdf_downloaded, last_checked, last_downloaded, pdf_path) VALUES (?, ?, ?, ?, ?)",
-            (url, pdf_downloaded, last_checked, last_downloaded, pdf_path)
+            "INSERT INTO posts (url, pdf_downloaded, last_checked, last_downloaded, pdf_path, legislation_number, submission_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (url, pdf_downloaded, last_checked, last_downloaded, pdf_path, legislation_number, submission_date)
         )
         conn.commit()
     except sqlite3.IntegrityError:
-        # Post with this URL already exists
-        pass
+        # Post with this URL already exists, update it
+        cursor.execute(
+            "UPDATE posts SET pdf_downloaded = ?, last_checked = ?, last_downloaded = ?, pdf_path = ?, legislation_number = ?, submission_date = ? WHERE url = ?",
+            (pdf_downloaded, last_checked, last_downloaded, pdf_path, legislation_number, submission_date, url)
+        )
+        conn.commit()
     finally:
         conn.close()
 
@@ -145,6 +155,19 @@ def update_post_legislation_info(url, legislation_number, submission_date):
     conn.commit()
     conn.close()
 
+def update_post_summary(url, summary, model_name):
+    """Updates a post with the generated summary and model used."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "UPDATE posts SET summary = ?, summary_model = ? WHERE url = ?",
+        (summary, model_name, url)
+    )
+    
+    conn.commit()
+    conn.close()
+
 def get_last_post_url():
     """Retrieves the URL of the last post that was successfully scraped."""
     conn = get_db_connection()
@@ -156,6 +179,42 @@ def get_last_post_url():
     conn.close()
     
     return post['url'] if post else None
+
+def get_undownloaded_posts():
+    """Retrieves all posts that have not yet had their PDFs downloaded."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM posts WHERE pdf_downloaded = 0 OR pdf_path IS NULL")
+    posts = cursor.fetchall()
+    
+    conn.close()
+    
+    return [dict(post) for post in posts] # Return as list of dictionaries
+
+def get_posts_to_summarize():
+    """Retrieves all posts that have downloaded PDFs but no summary."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM posts WHERE pdf_downloaded = 1 AND pdf_path IS NOT NULL AND summary IS NULL")
+    posts = cursor.fetchall()
+    
+    conn.close()
+    
+    return [dict(post) for post in posts]
+
+def get_post_by_legislation_number(legislation_number):
+    """Retrieves a post from the database by its legislation number."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM posts WHERE legislation_number = ?", (legislation_number,))
+    post = cursor.fetchone()
+    
+    conn.close()
+    
+    return dict(post) if post else None
 
 def _get_id_from_url(url):
     """Extracts the ID from a URL."""

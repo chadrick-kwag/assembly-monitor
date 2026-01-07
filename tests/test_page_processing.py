@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch, mock_open
 import os
 import sys # Import sys
-import sqlite3 # Import sqlite3 to mock its connect method
+# import sqlite3 # Import sqlite3 to mock its connect method
 
 # Add the parent directory to the Python path to allow importing from src
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))

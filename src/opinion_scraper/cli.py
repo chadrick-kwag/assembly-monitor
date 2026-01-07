@@ -2,7 +2,9 @@ import click
 import os
 from dotenv import load_dotenv
 from .scraper import get_post_urls, process_post, _get_last_page_number
-from .database import initialize_db, get_stats, get_highest_id_num
+from .database import initialize_db, get_stats, get_highest_id_num, get_posts_to_summarize, update_post_summary, get_post_by_legislation_number
+from .summary import summarize_pdf_local, configure_genai
+from tqdm import tqdm
 
 load_dotenv()
 
@@ -54,9 +56,69 @@ def scrape(start_page, end_page, output_dir, delay, fetch_latest):
     click.echo(f"Total URLs in database: {stats['total_urls']}")
     click.echo(f"PDFs downloaded: {stats['downloaded_pdfs']}")
     click.echo(f"URLs without PDF: {stats['not_downloaded']}")
+    click.echo(f"Posts summarized: {stats['summarized_posts']}")
     click.echo("----------------------")
 
     click.echo("Done.")
+
+@main.command()
+@click.option("--legislation-number", help="Summarize a specific post by its legislation number.")
+def summarize(legislation_number):
+    """
+    Generate summaries for downloaded PDFs using a generative AI model.
+    """
+    initialize_db()
+
+    try:
+        configure_genai()
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        click.echo("Please set the GEMINI_API_KEY environment variable.", err=True)
+        return
+
+    if legislation_number:
+        click.echo(f"Attempting to summarize post with legislation number: {legislation_number}")
+        post = get_post_by_legislation_number(legislation_number)
+        if post and post['pdf_downloaded'] and post['pdf_path']:
+            click.echo(f"Summarizing {post['pdf_path']}...")
+            summary_text = summarize_pdf_local(post['pdf_path'])
+            if summary_text.startswith("Error:"):
+                click.echo(f"Failed to summarize: {summary_text}", err=True)
+            else:
+                model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash") # Default model name
+                update_post_summary(post['url'], summary_text, model_name)
+                click.echo("Summary generated and saved to database.")
+                click.echo("\n--- Summary ---")
+                click.echo(summary_text)
+                click.echo("---------------")
+        else:
+            click.echo(f"Post with legislation number {legislation_number} not found, or PDF not downloaded.")
+    else:
+        click.echo("Generating summaries for all posts without a summary...")
+        posts_to_summarize = get_posts_to_summarize()
+        if not posts_to_summarize:
+            click.echo("No posts found that need summarization.")
+            return
+
+        for post in tqdm(posts_to_summarize, desc="Summarizing PDFs"):
+            if post['pdf_path']:
+                summary_text = summarize_pdf_local(post['pdf_path'])
+                if summary_text.startswith("Error:"):
+                    click.echo(f"Failed to summarize {post['pdf_path']}: {summary_text}", err=True)
+                else:
+                    model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash") # Default model name
+                    update_post_summary(post['url'], summary_text, model_name)
+            else:
+                click.echo(f"Skipping post {post['url']} as no PDF path is available.", err=True)
+        click.echo("Summarization complete.")
+
+    stats = get_stats()
+    click.echo("\n--- Summarization Report ---")
+    click.echo(f"Total URLs in database: {stats['total_urls']}")
+    click.echo(f"PDFs downloaded: {stats['downloaded_pdfs']}")
+    click.echo(f"Posts summarized: {stats['summarized_posts']}")
+    click.echo("--------------------------")
+
 
 @main.command()
 def status():
@@ -69,6 +131,7 @@ def status():
     click.echo(f"Total URLs in database: {stats['total_urls']}")
     click.echo(f"PDFs downloaded: {stats['downloaded_pdfs']}")
     click.echo(f"URLs without PDF: {stats['not_downloaded']}")
+    click.echo(f"Posts summarized: {stats['summarized_posts']}")
     click.echo("-----------------------")
 
 if __name__ == "__main__":

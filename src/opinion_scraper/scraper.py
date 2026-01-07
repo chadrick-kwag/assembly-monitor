@@ -184,7 +184,7 @@ def _download_pdf_file(pdf_url, download_dir, initial_file_name, post_url, delay
         if fname:
             try:
                 header_filename = requests.utils.unquote(fname[0]).encode('latin-1').decode('utf-8')
-            except:
+            except (UnicodeDecodeError, AttributeError): # Specify exceptions
                 header_filename = requests.utils.unquote(fname[0])
             header_filename = header_filename.strip("'\"")
             if not header_filename.lower().endswith(".pdf"):
