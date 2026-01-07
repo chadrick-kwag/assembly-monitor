@@ -10,4 +10,4 @@ downloads
 GEMINI.md
 *.egg-info
 .DS_Store
-migrations
+.*_cache
