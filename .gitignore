@@ -1,0 +1,5 @@
+GEMINI.md
+.venv
+teststuff
+*.egg-info
+.gemini
