@@ -11,3 +11,4 @@ GEMINI.md
 *.egg-info
 .DS_Store
 .*_cache
+backups

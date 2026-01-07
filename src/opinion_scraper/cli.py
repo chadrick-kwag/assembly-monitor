@@ -5,6 +5,7 @@ from .scraper import get_post_urls, process_post, _get_last_page_number
 from .database import initialize_db, get_stats, get_highest_id_num, get_posts_to_summarize, update_post_summary, get_post_by_legislation_number
 from .summary import summarize_pdf_local
 from tqdm import tqdm
+from . import backup # <--- ADD THIS LINE
 
 load_dotenv()
 
@@ -14,6 +15,8 @@ def main():
     A web scraper for opinion.lawmaking.go.kr
     """
     pass
+
+main.add_command(backup.main, name="backup") # <--- ADD THIS LINE
 
 @main.command()
 @click.option("--start-page", default=1, help="The page number to start scraping from.")
