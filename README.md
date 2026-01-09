@@ -74,6 +74,26 @@ To fetch only the latest posts since your last scraping attempt (it will stop wh
 assmon scrape --fetch-latest
 ```
 
+### Summarizing
+
+To generate summaries for downloaded PDFs:
+
+```bash
+assmon summarize
+```
+
+To summarize a specific post by its legislation number:
+
+```bash
+assmon summarize --legislation-number 12345
+```
+
+You can also specify a delay between summarization attempts (default: 5 seconds):
+
+```bash
+assmon summarize --delay 10
+```
+
 ### Checking Status
 
 To check the current status of the database:

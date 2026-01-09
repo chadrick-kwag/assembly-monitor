@@ -1,5 +1,6 @@
 import click
 import os
+import time
 from dotenv import load_dotenv
 from .scraper import get_post_urls, process_post, _get_last_page_number
 from .database import initialize_db, get_stats, get_highest_id_num, get_posts_to_summarize, update_post_summary, get_post_by_legislation_number
@@ -66,7 +67,8 @@ def scrape(start_page, end_page, output_dir, delay, fetch_latest):
 
 @main.command()
 @click.option("--legislation-number", help="Summarize a specific post by its legislation number.")
-def summarize(legislation_number):
+@click.option("--delay", default=5, help="Time delay in seconds between summarization attempts.")
+def summarize(legislation_number, delay):
     """
     Generate summaries for downloaded PDFs using a generative AI model.
     """
@@ -80,6 +82,7 @@ def summarize(legislation_number):
         if post and post['pdf_downloaded'] and post['pdf_path']:
             full_pdf_path = os.path.join(pdf_download_dir, post['pdf_path'])
             click.echo(style(f"Summarizing {full_pdf_path}...", fg="blue"))
+            time.sleep(delay)  # Add delay
             summary_text = summarize_pdf_local(full_pdf_path)
             if summary_text.startswith("Error:"):
                 click.echo(style(f"Failed to summarize: {summary_text}", fg="red"), err=True)
@@ -104,16 +107,19 @@ def summarize(legislation_number):
         for post in tqdm(posts_to_summarize, desc="Summarizing PDFs"):
             if post['pdf_path']:
                 full_pdf_path = os.path.join(pdf_download_dir, post['pdf_path'])
+                tqdm.write(style(f"Summarizing {full_pdf_path}...", fg="blue"))
+                time.sleep(delay)  # Add delay
                 summary_text = summarize_pdf_local(full_pdf_path)
                 if summary_text.startswith("Error:"):
-                    click.echo(style(f"Failed to summarize {full_pdf_path}: {summary_text}", fg="red"), err=True)
+                    tqdm.write(style(f"Failed to summarize {full_pdf_path}: {summary_text}", fg="red"), err=True)
                 else:
                     model_name = os.getenv("GEMINI_MODEL_NAME")
                     if not model_name:
                         raise ValueError("GEMINI_MODEL_NAME environment variable not set.")
                     update_post_summary(post['url'], summary_text, model_name)
+                    tqdm.write(style(f"Successfully summarized {full_pdf_path}", fg="green"))
             else:
-                click.echo(style(f"Skipping post {post['url']} as no PDF path is available.", fg="yellow"), err=True)
+                tqdm.write(style(f"Skipping post {post['url']} as no PDF path is available.", fg="yellow"), err=True)
         click.echo(style("Summarization complete.", fg="green"))
 
     stats = get_stats()
