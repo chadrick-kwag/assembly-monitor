@@ -1,6 +1,7 @@
 import click
 import os
 import time
+import asyncio # Import asyncio
 from dotenv import load_dotenv
 from .scraper import get_post_urls, process_post, _get_last_page_number
 from .database import initialize_db, get_stats, get_highest_id_num, get_posts_to_summarize, update_post_summary, get_post_by_legislation_number
@@ -68,66 +69,70 @@ def scrape(start_page, end_page, output_dir, delay, fetch_latest):
 @main.command()
 @click.option("--legislation-number", help="Summarize a specific post by its legislation number.")
 @click.option("--delay", default=5, help="Time delay in seconds between summarization attempts.")
-def summarize(legislation_number, delay):
+@click.option("--timeout", default=60, type=int, help="Timeout in seconds for summary generation.")
+def summarize(legislation_number, delay, timeout):
     """
     Generate summaries for downloaded PDFs using a generative AI model.
     """
-    initialize_db()
+    async def _summarize_async(legislation_number, delay, timeout):
+        initialize_db()
 
-    pdf_download_dir = os.getenv("PDF_DOWNLOAD_DIR", "downloads")
+        pdf_download_dir = os.getenv("PDF_DOWNLOAD_DIR", "downloads")
 
-    if legislation_number:
-        click.echo(style(f"Attempting to summarize post with legislation number: {legislation_number}", fg="blue"))
-        post = get_post_by_legislation_number(legislation_number)
-        if post and post['pdf_downloaded'] and post['pdf_path']:
-            full_pdf_path = os.path.join(pdf_download_dir, post['pdf_path'])
-            click.echo(style(f"Summarizing {full_pdf_path}...", fg="blue"))
-            time.sleep(delay)  # Add delay
-            summary_text = summarize_pdf_local(full_pdf_path)
-            if summary_text.startswith("Error:"):
-                click.echo(style(f"Failed to summarize: {summary_text}", fg="red"), err=True)
-            else:
-                model_name = os.getenv("GEMINI_MODEL_NAME")
-                if not model_name:
-                    raise ValueError("GEMINI_MODEL_NAME environment variable not set.")
-                update_post_summary(post['url'], summary_text, model_name)
-                click.echo(style("Summary generated and saved to database.", fg="green"))
-                click.echo(style("\n--- Summary ---", fg="yellow", bold=True))
-                click.echo(summary_text)
-                click.echo("---------------")
-        else:
-            click.echo(style(f"Post with legislation number {legislation_number} not found, or PDF not downloaded.", fg="red"))
-    else:
-        click.echo(style("Generating summaries for all posts without a summary...", fg="yellow"))
-        posts_to_summarize = get_posts_to_summarize()
-        if not posts_to_summarize:
-            click.echo(style("No posts found that need summarization.", fg="yellow"))
-            return
-
-        for post in tqdm(posts_to_summarize, desc="Summarizing PDFs"):
-            if post['pdf_path']:
+        if legislation_number:
+            click.echo(style(f"Attempting to summarize post with legislation number: {legislation_number}", fg="blue"))
+            post = get_post_by_legislation_number(legislation_number)
+            if post and post['pdf_downloaded'] and post['pdf_path']:
                 full_pdf_path = os.path.join(pdf_download_dir, post['pdf_path'])
-                tqdm.write(style(f"Summarizing {full_pdf_path}...", fg="blue"))
-                time.sleep(delay)  # Add delay
-                summary_text = summarize_pdf_local(full_pdf_path)
+                click.echo(style(f"Summarizing {full_pdf_path}...", fg="blue"))
+                await asyncio.sleep(delay)  # Use asyncio.sleep for async delay
+                summary_text = await summarize_pdf_local(full_pdf_path, timeout=timeout)
                 if summary_text.startswith("Error:"):
-                    tqdm.write(style(f"Failed to summarize {full_pdf_path}: {summary_text}", fg="red"), err=True)
+                    click.echo(style(f"Failed to summarize: {summary_text}", fg="red"), err=True)
                 else:
                     model_name = os.getenv("GEMINI_MODEL_NAME")
                     if not model_name:
                         raise ValueError("GEMINI_MODEL_NAME environment variable not set.")
                     update_post_summary(post['url'], summary_text, model_name)
-                    tqdm.write(style(f"Successfully summarized {full_pdf_path}", fg="green"))
+                    click.echo(style("Summary generated and saved to database.", fg="green"))
+                    click.echo(style("\n--- Summary ---", fg="yellow", bold=True))
+                    click.echo(summary_text)
+                    click.echo("---------------")
             else:
-                tqdm.write(style(f"Skipping post {post['url']} as no PDF path is available.", fg="yellow"), err=True)
-        click.echo(style("Summarization complete.", fg="green"))
+                click.echo(style(f"Post with legislation number {legislation_number} not found, or PDF not downloaded.", fg="red"))
+        else:
+            click.echo(style("Generating summaries for all posts without a summary...", fg="yellow"))
+            posts_to_summarize = get_posts_to_summarize()
+            if not posts_to_summarize:
+                click.echo(style("No posts found that need summarization.", fg="yellow"))
+                return
 
-    stats = get_stats()
-    click.echo(style("\n--- Summarization Report ---", fg="yellow", bold=True))
-    click.echo(f"Total URLs in database: {stats['total_urls']}")
-    click.echo(f"PDFs downloaded: {stats['downloaded_pdfs']}")
-    click.echo(f"Posts summarized: {stats['summarized_posts']}")
-    click.echo("--------------------------")
+            for post in tqdm(posts_to_summarize, desc="Summarizing PDFs"):
+                if post['pdf_path']:
+                    full_pdf_path = os.path.join(pdf_download_dir, post['pdf_path'])
+                    tqdm.write(style(f"Summarizing {full_pdf_path}...", fg="blue"))
+                    await asyncio.sleep(delay)  # Use asyncio.sleep for async delay
+                    summary_text = await summarize_pdf_local(full_pdf_path, timeout=timeout)
+                    if summary_text.startswith("Error:"):
+                        tqdm.write(style(f"Failed to summarize {full_pdf_path}: {summary_text}", fg="red"), err=True)
+                    else:
+                        model_name = os.getenv("GEMINI_MODEL_NAME")
+                        if not model_name:
+                            raise ValueError("GEMINI_MODEL_NAME environment variable not set.")
+                        update_post_summary(post['url'], summary_text, model_name)
+                        tqdm.write(style(f"Successfully summarized {full_pdf_path}", fg="green"))
+                else:
+                    tqdm.write(style(f"Skipping post {post['url']} as no PDF path is available.", fg="yellow"), err=True)
+            click.echo(style("Summarization complete.", fg="green"))
+
+        stats = get_stats()
+        click.echo(style("\n--- Summarization Report ---", fg="yellow", bold=True))
+        click.echo(f"Total URLs in database: {stats['total_urls']}")
+        click.echo(f"PDFs downloaded: {stats['downloaded_pdfs']}")
+        click.echo(f"Posts summarized: {stats['summarized_posts']}")
+        click.echo("--------------------------")
+    
+    asyncio.run(_summarize_async(legislation_number, delay, timeout))
 
 
 @main.command()

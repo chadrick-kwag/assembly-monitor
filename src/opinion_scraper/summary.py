@@ -2,6 +2,7 @@ import os
 import sys
 import httpx
 import pathlib
+import asyncio # Import asyncio
 from dotenv import load_dotenv
 from pypdf import PdfReader
 
@@ -34,7 +35,11 @@ def extract_text_from_pdf(pdf_path: str) -> str:
         return ""
 
 # --- Configuration ---
-def summarize_pdf_local(pdf_path: str, prompt: str = "이 입법안에 대한 핵심 내용을 요약해줘. 어떤 취지인지, 어떤 것들이 바뀌는지를 요약하고, 최종적으로는 이것이 일반 시민들에게 미칠 영향을 정리해줘") -> str:
+async def summarize_pdf_local(
+    pdf_path: str,
+    prompt: str = "이 입법안에 대한 핵심 내용을 요약해줘. 어떤 취지인지, 어떤 것들이 바뀌는지를 요약하고, 최종적으로는 이것이 일반 시민들에게 미칠 영향을 정리해줘",
+    timeout: int = int(os.getenv("SUMMARY_TIMEOUT", 60)) # Configurable timeout
+) -> str:
     """
     Summarizes a local PDF file using the Gemini API.
     This method is suitable for smaller PDF files (typically under 20MB).
@@ -50,34 +55,41 @@ def summarize_pdf_local(pdf_path: str, prompt: str = "이 입법안에 대한 �
         page_count = get_pdf_page_count(pdf_path)
         
         model_name = os.getenv("GEMINI_MODEL_NAME", 'gemma-3-27b-it')
-        client = genai.Client(api_key=API_KEY) # Instantiate the client
-
-        if page_count > 30:
-            print(f"PDF file has {page_count} pages. Extracting text for summarization.")
-            text = extract_text_from_pdf(pdf_path)
-            if not text:
-                return "Error: Could not extract text from the PDF file."
+        async with genai.Client(api_key=API_KEY).aio as aclient: # Use async client
+            if page_count > 30:
+                print(f"PDF file has {page_count} pages. Extracting text for summarization.")
+                text = extract_text_from_pdf(pdf_path)
+                if not text:
+                    return "Error: Could not extract text from the PDF file."
+                
+                response = await asyncio.wait_for( # Add timeout
+                    aclient.models.generate_content( # Call generate_content via async client
+                        model=model_name, # Pass model name as string
+                        contents=[
+                            text,
+                            prompt,
+                        ],
+                    ),
+                    timeout=timeout
+                )
+            else:
+                pdf_file_path = pathlib.Path(pdf_path)
+                response = await asyncio.wait_for( # Add timeout
+                    aclient.models.generate_content( # Call generate_content via async client
+                        model=model_name, # Pass model name as string
+                        contents=[
+                            types.Part.from_bytes(data=pdf_file_path.read_bytes(), mime_type="application/pdf"), # type: ignore
+                            prompt,
+                        ],
+                    ),
+                    timeout=timeout
+                )
             
-            response = client.models.generate_content( # Call generate_content via client
-                model=model_name, # Pass model name as string
-                contents=[
-                    text,
-                    prompt,
-                ],
-            )
-        else:
-            pdf_file_path = pathlib.Path(pdf_path)
-            response = client.models.generate_content( # Call generate_content via client
-                model=model_name, # Pass model name as string
-                contents=[
-                    types.Part.from_bytes(data=pdf_file_path.read_bytes(), mime_type="application/pdf"), # type: ignore
-                    prompt,
-                ],
-            )
-        
-        # Accessing the text from the response
-        return response.text
+            # Accessing the text from the response
+            return response.text
 
+    except asyncio.TimeoutError:
+        return f"Error: Summarization timed out after {timeout} seconds for {pdf_path}"
     except httpx.HTTPStatusError as e:
         return f"An HTTP error occurred: {e.response.status_code} - {e.response.text}"
     except Exception as e:

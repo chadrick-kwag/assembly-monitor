@@ -1,6 +1,7 @@
 import pytest
 import os
 import sys
+import asyncio
 from dotenv import load_dotenv
 
 # Add the parent directory to the Python path so we can import from src
@@ -25,7 +26,8 @@ def set_gemini_api_key():
     else:
         del os.environ["GEMINI_API_KEY"]
 
-def test_summarize_pdf_local_success(set_gemini_api_key):
+@pytest.mark.asyncio
+async def test_summarize_pdf_local_success(set_gemini_api_key):
     """
     Tests that summarize_pdf_local returns a non-error, non-empty string.
     Note: This test will not actually call the Gemini API due to the dummy API key.
@@ -34,7 +36,7 @@ def test_summarize_pdf_local_success(set_gemini_api_key):
     if not os.path.exists(SAMPLE_PDF_PATH):
         pytest.fail(f"Sample PDF not found at {SAMPLE_PDF_PATH}. Please ensure it's copied to tests/resources/.")
 
-    summary = summarize_pdf_local(SAMPLE_PDF_PATH)
+    summary = await summarize_pdf_local(SAMPLE_PDF_PATH)
 
     # Assert that the summary contains an error message, as a dummy API key will lead to API failure.
     assert summary.startswith("An error occurred during summarization:") or \
