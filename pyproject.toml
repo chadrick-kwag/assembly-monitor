@@ -25,6 +25,7 @@ dependencies = [
     "httpx>=0.24.1",
     "google-generativeai>=0.8.6",
     "google-genai>=1.47.0",
+    "pypdf>=4.2.0",
 ]
 
 [project.urls]
