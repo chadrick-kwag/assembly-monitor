@@ -6,7 +6,7 @@ function AppNavbar() {
   return (
     <Navbar bg="dark" data-bs-theme="dark">
       <Container>
-        <Navbar.Brand href="#home">Assembly Monitor</Navbar.Brand>
+        <Navbar.Brand href="/">Assembly Monitor</Navbar.Brand>
         <Nav className="me-auto">
           <Nav.Link href="/">Home</Nav.Link>
           <Nav.Link href="/dbsearch">DB Search</Nav.Link>
