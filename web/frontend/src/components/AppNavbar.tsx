@@ -8,9 +8,8 @@ function AppNavbar() {
       <Container>
         <Navbar.Brand href="#home">Assembly Monitor</Navbar.Brand>
         <Nav className="me-auto">
-          <Nav.Link href="#home">Home</Nav.Link>
-          <Nav.Link href="#features">Features</Nav.Link>
-          <Nav.Link href="#pricing">Pricing</Nav.Link>
+          <Nav.Link href="/">Home</Nav.Link>
+          <Nav.Link href="/dbsearch">DB Search</Nav.Link>
         </Nav>
       </Container>
     </Navbar>
