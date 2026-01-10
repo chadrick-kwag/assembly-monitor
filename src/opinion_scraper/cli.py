@@ -114,7 +114,7 @@ def summarize(legislation_number, delay, timeout):
                     await asyncio.sleep(delay)  # Use asyncio.sleep for async delay
                     summary_text = await summarize_pdf_local(full_pdf_path, timeout=timeout)
                     if summary_text.startswith("Error:"):
-                        tqdm.write(style(f"Failed to summarize {full_pdf_path}: {summary_text}", fg="red"), err=True)
+                        tqdm.write(style(f"Failed to summarize {full_pdf_path}: {summary_text}", fg="red"))
                     else:
                         model_name = os.getenv("GEMINI_MODEL_NAME")
                         if not model_name:
@@ -122,7 +122,7 @@ def summarize(legislation_number, delay, timeout):
                         update_post_summary(post['url'], summary_text, model_name)
                         tqdm.write(style(f"Successfully summarized {full_pdf_path}", fg="green"))
                 else:
-                    tqdm.write(style(f"Skipping post {post['url']} as no PDF path is available.", fg="yellow"), err=True)
+                    tqdm.write(style(f"Skipping post {post['url']} as no PDF path is available.", fg="yellow"))
             click.echo(style("Summarization complete.", fg="green"))
 
         stats = get_stats()
