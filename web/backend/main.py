@@ -40,7 +40,7 @@ def get_db():
     db_path = os.getenv("SQLITE_DB_PATH")
     if not db_path:
         raise ValueError("SQLITE_DB_PATH environment variable not set.")
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     try:
         yield conn
