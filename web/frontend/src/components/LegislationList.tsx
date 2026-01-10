@@ -51,11 +51,39 @@ function LegislationList() {
     return <div>{error}</div>;
   }
 
-  // Calculate page numbers
+  // Calculate total pages
+  const totalPages = Math.ceil(totalPosts / postsPerPage);
+
+  // Pagination logic
   const pageNumbers = [];
-  for (let i = 1; i <= Math.ceil(totalPosts / postsPerPage); i++) {
+  const maxPagesToShow = 5;
+  let startPage: number, endPage: number;
+
+  if (totalPages <= maxPagesToShow) {
+    // Show all pages
+    startPage = 1;
+    endPage = totalPages;
+  } else {
+    // Show a subset of pages
+    const maxPagesBeforeCurrent = Math.floor(maxPagesToShow / 2);
+    const maxPagesAfterCurrent = Math.ceil(maxPagesToShow / 2) - 1;
+
+    if (currentPage <= maxPagesBeforeCurrent) {
+      startPage = 1;
+      endPage = maxPagesToShow;
+    } else if (currentPage + maxPagesAfterCurrent >= totalPages) {
+      startPage = totalPages - maxPagesToShow + 1;
+      endPage = totalPages;
+    } else {
+      startPage = currentPage - maxPagesBeforeCurrent;
+      endPage = currentPage + maxPagesAfterCurrent;
+    }
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
     pageNumbers.push(i);
   }
+
 
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
@@ -87,11 +115,15 @@ function LegislationList() {
       </Table>
       <div className="d-flex justify-content-center">
         <Pagination>
+          <Pagination.First onClick={() => paginate(1)} disabled={currentPage === 1} />
+          <Pagination.Prev onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} />
           {pageNumbers.map((number) => (
             <Pagination.Item key={number} active={number === currentPage} onClick={() => paginate(number)}>
               {number}
             </Pagination.Item>
           ))}
+          <Pagination.Next onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} />
+          <Pagination.Last onClick={() => paginate(totalPages)} disabled={currentPage === totalPages} />
         </Pagination>
       </div>
     </>
