@@ -40,8 +40,12 @@ function DBSearchPage() {
       }
       const data: Legislation = await response.json();
       setSearchResult(data);
-    } catch (e: any) {
-      setError(`Failed to fetch legislation: ${e.message}`);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(`Failed to fetch legislation: ${e.message}`);
+      } else {
+        setError('An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }

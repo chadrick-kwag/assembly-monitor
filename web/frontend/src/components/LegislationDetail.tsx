@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { Card, Button } from 'react-bootstrap';
+import ReactMarkdown from 'react-markdown';
 
 interface Post {
   id: number;
@@ -77,7 +78,7 @@ function LegislationDetail() {
         )}
         <Card.Text className="mt-3">
           <h5>Summary</h5>
-          <p>{post.summary || 'No summary available.'}</p>
+          <ReactMarkdown>{post.summary || 'No summary available.'}</ReactMarkdown>
         </Card.Text>
       </Card.Body>
     </Card>
